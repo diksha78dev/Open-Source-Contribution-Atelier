@@ -8,16 +8,19 @@ from drf_spectacular.views import (
 )
 from graphene_django.views import GraphQLView
 
+from apps.billing.views import CheckoutSessionView
+from apps.billing.webhooks import stripe_webhook
 from apps.dashboard.views import LeaderboardView
 
 from .health_view import health_view
 from .version_view import version_view
-from apps.billing.views import CheckoutSessionView
-from apps.billing.webhooks import stripe_webhook
 
 urlpatterns = [
     # ── Admin ──────────────────────────────────────────────────────────────────
     path("admin/", admin.site.urls),
+    path("api/admin/", include("apps.monitoring.urls")),
+    path("api/monitoring/", include("apps.monitoring.urls")),
+
     # ── Health Checks ──────────────────────────────────────────────────────────
     path("health/", include("apps.health.urls")),
     # ── Legacy Health (keep for backward compatibility) ──────────────────────

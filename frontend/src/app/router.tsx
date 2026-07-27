@@ -98,6 +98,13 @@ const BackupDashboardPage = lazy(() =>
   })),
 );
 
+const CeleryDashboardPage = lazy(() =>
+  import("../pages/admin/CeleryDashboardPage").then((module) => ({
+    default: module.default,
+  })),
+);
+
+
 const VulnerabilityDashboard = lazy(() =>
   import("../pages/admin/VulnerabilityDashboard").then((module) => ({
     default: module.VulnerabilityDashboard,
@@ -646,6 +653,16 @@ export function AppRouter() {
               </ProtectedRoute>
             }
           />
+
+          <Route
+            path="/admin/celery"
+            element={
+              <ProtectedRoute>
+                <CeleryDashboardPage />
+              </ProtectedRoute>
+            }
+          />
+
 
           <Route
             path="/admin/performance"
