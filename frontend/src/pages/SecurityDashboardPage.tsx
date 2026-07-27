@@ -36,7 +36,7 @@ export function SecurityDashboardPage() {
 
   const { metrics, dependencies } = data;
   const depStats = dependencies || {
-    total_outdated: 0,
+    total_vulnerable: 0,
     avg_decay_rate: 0,
     avg_security_score: 100,
   };
@@ -78,10 +78,10 @@ export function SecurityDashboardPage() {
             <Package className="w-10 h-10 text-orange-500" />
             <div>
               <h3 className="text-xs uppercase tracking-widest text-gray-500">
-                Outdated Packages
+                Vulnerable Packages
               </h3>
               <p className="text-4xl font-black text-black dark:text-white">
-                {depStats.total_outdated}
+                {depStats.total_vulnerable}
               </p>
             </div>
           </div>

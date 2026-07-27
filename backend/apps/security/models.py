@@ -104,13 +104,13 @@ class ProjectDependency(models.Model):
     ecosystem = models.CharField(max_length=32, default="python")
     current_version = models.CharField(max_length=64, default="0.0.0")
     latest_version = models.CharField(max_length=64, default="0.0.0")
-    days_outdated = models.IntegerField(default=0)
+    days_vulnerable = models.IntegerField(default=0)
     decay_rate = models.FloatField(default=0.0)
     security_score = models.IntegerField(default=100)
     last_checked_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ["-days_outdated", "package_name"]
+        ordering = ["-days_vulnerable", "package_name"]
         constraints = [
             models.UniqueConstraint(
                 fields=["package_name", "ecosystem"], name="unique_package_ecosystem"

@@ -193,8 +193,8 @@ class VulnerabilitySummaryView(APIView):
                     "active_autofix_prs": active_autofix_prs,
                 },
                 "dependencies": {
-                    "total_outdated": ProjectDependency.objects.filter(
-                        days_outdated__gt=0
+                    "total_vulnerable": ProjectDependency.objects.filter(
+                        days_vulnerable__gt=0
                     ).count(),
                     "avg_decay_rate": ProjectDependency.objects.aggregate(
                         a=Avg("decay_rate")

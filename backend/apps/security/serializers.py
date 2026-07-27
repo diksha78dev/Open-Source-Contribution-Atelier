@@ -90,7 +90,7 @@ class ProjectDependencySerializer(serializers.ModelSerializer):
             "ecosystem",
             "current_version",
             "latest_version",
-            "days_outdated",
+            "days_vulnerable",
             "decay_rate",
             "security_score",
             "last_checked_at",
