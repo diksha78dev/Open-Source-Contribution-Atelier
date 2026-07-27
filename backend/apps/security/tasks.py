@@ -1,53 +1,125 @@
+import logging
+
+import requests
 from celery import shared_task
+from django.conf import settings
 from django.utils import timezone
-from .models import ProjectDependency
+
+from apps.security.models import AutoFixPR, ProjectDependency
+
+logger = logging.getLogger(__name__)
 
 
 @shared_task
 def scan_project_dependencies():
-    # Mock data for demonstration and testing purposes
-    # In a real implementation, this would call Snyk or Dependabot APIs.
-    mock_dependencies = [
-        {
-            "package_name": "django",
-            "ecosystem": "python",
-            "current_version": "3.2.19",
-            "latest_version": "4.2.11",
-            "days_outdated": 340,
-            "decay_rate": 0.85,
-            "security_score": 40,
-        },
-        {
-            "package_name": "react",
-            "ecosystem": "npm",
-            "current_version": "18.2.0",
-            "latest_version": "18.2.0",
-            "days_outdated": 0,
-            "decay_rate": 0.0,
-            "security_score": 100,
-        },
-        {
-            "package_name": "requests",
-            "ecosystem": "python",
-            "current_version": "2.28.1",
-            "latest_version": "2.31.0",
-            "days_outdated": 120,
-            "decay_rate": 0.45,
-            "security_score": 75,
-        },
-    ]
+    """
+    Fetches real Dependabot alerts from GitHub to track dependency decay and auto-PRs.
+    """
+    token = getattr(settings, "GITHUB_TOKEN", None)
+    if not token:
+        logger.warning("GITHUB_TOKEN not set. Cannot fetch Dependabot alerts.")
+        return "GITHUB_TOKEN missing."
 
-    for dep_data in mock_dependencies:
-        ProjectDependency.objects.update_or_create(
-            package_name=dep_data["package_name"],
-            ecosystem=dep_data["ecosystem"],
-            defaults={
-                "current_version": dep_data["current_version"],
-                "latest_version": dep_data["latest_version"],
-                "days_outdated": dep_data["days_outdated"],
-                "decay_rate": dep_data["decay_rate"],
-                "security_score": dep_data["security_score"],
-            },
-        )
+    # Using the repository owner/name string. Normally this would be dynamic,
+    # but for this specific repo, we can hardcode or get it from env.
+    repo = getattr(
+        settings, "GITHUB_REPO_NAME", "diksha78dev/Open-Source-Contribution-Atelier"
+    )
 
-    return f"Processed {len(mock_dependencies)} dependencies."
+    headers = {
+        "Authorization": f"token {token}",
+        "Accept": "application/vnd.github.v3+json",
+    }
+
+    # 1. Fetch Dependabot alerts
+    alerts_url = f"https://api.github.com/repos/{repo}/dependabot/alerts"
+    try:
+        response = requests.get(alerts_url, headers=headers)
+        if response.status_code == 200:
+            alerts = response.json()
+            processed_count = 0
+            for alert in alerts:
+                if alert.get("state") != "open":
+                    continue
+
+                dependency = alert.get("dependency", {})
+                package_name = dependency.get("package", {}).get("name", "unknown")
+                ecosystem = dependency.get("package", {}).get("ecosystem", "unknown")
+
+                # Dependabot might not always give full current/latest version info in alerts,
+                # but we extract what we can.
+                current_version = "unknown"
+                latest_version = "unknown"  # Usually fixed in version X
+
+                security_vulnerability = alert.get("security_vulnerability", {})
+                first_patched_version = security_vulnerability.get(
+                    "first_patched_version", {}
+                )
+                if first_patched_version and first_patched_version.get("identifier"):
+                    latest_version = first_patched_version.get("identifier")
+
+                # Estimate days outdated based on created_at
+                created_at_str = alert.get("created_at")
+                days_outdated = 0
+                if created_at_str:
+                    from dateutil.parser import parse
+
+                    created_at = parse(created_at_str)
+                    days_outdated = (timezone.now() - created_at).days
+
+                # Decay rate is a simplified mock metric based on severity
+                severity = security_vulnerability.get("severity", "low")
+                decay_rate = {
+                    "critical": 1.0,
+                    "high": 0.8,
+                    "medium": 0.5,
+                    "low": 0.2,
+                }.get(severity, 0.1)
+                security_score = max(0, 100 - int(decay_rate * 100))
+
+                ProjectDependency.objects.update_or_create(
+                    package_name=package_name,
+                    ecosystem=ecosystem,
+                    defaults={
+                        "current_version": current_version,
+                        "latest_version": latest_version,
+                        "days_outdated": days_outdated,
+                        "decay_rate": decay_rate,
+                        "security_score": security_score,
+                    },
+                )
+                processed_count += 1
+
+            logger.info(f"Processed {processed_count} Dependabot alerts.")
+        else:
+            logger.error(
+                f"Failed to fetch Dependabot alerts: {response.status_code} {response.text}"
+            )
+    except Exception as e:
+        logger.error(f"Error fetching Dependabot alerts: {e}")
+
+    # 2. Fetch Dependabot created PRs for auto-PR syncing
+    pulls_url = f"https://api.github.com/repos/{repo}/pulls?state=open"
+    try:
+        response = requests.get(pulls_url, headers=headers)
+        if response.status_code == 200:
+            prs = response.json()
+            for pr in prs:
+                if pr.get("user", {}).get("login") == "dependabot[bot]":
+                    pr_number = pr.get("number")
+                    pr_url = pr.get("html_url")
+                    title = pr.get("title", "")
+
+                    AutoFixPR.objects.update_or_create(
+                        pr_number=pr_number,
+                        defaults={
+                            "pr_url": pr_url,
+                            "status": "OPEN",
+                            "packages_updated": [title],  # Rough estimate
+                        },
+                    )
+            logger.info("Synced Dependabot PRs.")
+    except Exception as e:
+        logger.error(f"Error syncing Dependabot PRs: {e}")
+
+    return "Scan complete."

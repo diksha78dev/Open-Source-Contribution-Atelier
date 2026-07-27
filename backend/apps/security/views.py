@@ -122,10 +122,10 @@ class AutoFixPRViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.AllowAny]
 
 
-class ProjectDependencyViewSet(viewsets.ModelViewSet):
+class ProjectDependencyViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = ProjectDependency.objects.all()
     serializer_class = ProjectDependencySerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
 
 class VulnerabilitySummaryView(APIView):

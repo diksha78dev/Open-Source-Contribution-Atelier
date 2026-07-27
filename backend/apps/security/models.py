@@ -111,6 +111,11 @@ class ProjectDependency(models.Model):
 
     class Meta:
         ordering = ["-days_outdated", "package_name"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["package_name", "ecosystem"], name="unique_package_ecosystem"
+            )
+        ]
 
     def __str__(self):
         return f"{self.package_name} ({self.current_version} -> {self.latest_version})"
