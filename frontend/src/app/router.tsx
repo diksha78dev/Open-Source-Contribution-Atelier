@@ -123,6 +123,36 @@ const ContributorSandboxPage = lazy(() =>
   })),
 );
 
+const GitSubmoduleSimulatorPage = lazy(() =>
+  import("../pages/GitSubmoduleSimulatorPage").then((module) => ({
+    default: module.GitSubmoduleSimulatorPage,
+  })),
+);
+
+const GitStashManagerPage = lazy(() =>
+  import("../pages/GitStashManagerPage").then((module) => ({
+    default: module.GitStashManagerPage,
+  })),
+);
+
+const MonorepoVisualizerPage = lazy(() =>
+  import("../pages/MonorepoVisualizerPage").then((module) => ({
+    default: module.MonorepoVisualizerPage,
+  })),
+);
+
+const DockerfileLinterPage = lazy(() =>
+  import("../pages/DockerfileLinterPage").then((module) => ({
+    default: module.DockerfileLinterPage,
+  })),
+);
+
+const GitBisectGamePage = lazy(() =>
+  import("../pages/GitBisectGamePage").then((module) => ({
+    default: module.GitBisectGamePage,
+  })),
+);
+
 const CollabSessionPage = lazy(() =>
   import("../pages/CollabSessionPage").then((module) => ({
     default: module.CollabSessionPage,
@@ -519,6 +549,51 @@ export function AppRouter() {
             element={
               <ProtectedRoute>
                 <ContributorSandboxPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/sandbox/submodules"
+            element={
+              <ProtectedRoute>
+                <GitSubmoduleSimulatorPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/git-tools/stash"
+            element={
+              <ProtectedRoute>
+                <GitStashManagerPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/monorepo-visualizer"
+            element={
+              <ProtectedRoute>
+                <MonorepoVisualizerPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/dockerfile-linter"
+            element={
+              <ProtectedRoute>
+                <DockerfileLinterPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/git-bisect-game"
+            element={
+              <ProtectedRoute>
+                <GitBisectGamePage />
               </ProtectedRoute>
             }
           />

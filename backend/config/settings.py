@@ -242,8 +242,11 @@ CHANNEL_LAYER_BACKEND = _channel_cfg["CHANNEL_LAYER_BACKEND"]
 _default_rate_limit_backend = (
     "redis" if is_redis_available(CHECK_REDIS_URL) and ENV_REDIS_URL else "local"
 )
-RATE_LIMIT_BACKEND = os.getenv("RATE_LIMIT_BACKEND", _default_rate_limit_backend).lower()
+RATE_LIMIT_BACKEND = os.getenv(
+    "RATE_LIMIT_BACKEND", _default_rate_limit_backend
+).lower()
 RATE_LIMIT_REDIS_URL = ENV_REDIS_URL or CHECK_REDIS_URL
+
 
 MIDDLEWARE = [
     "django_prometheus.middleware.PrometheusBeforeMiddleware",
@@ -349,6 +352,9 @@ DATABASE_REPLICAS = [
 
 # Seconds after a write before a user's reads are redirected back to replicas.
 READ_AFTER_WRITE_SECONDS = int(os.getenv("READ_AFTER_WRITE_SECONDS", "5"))
+
+# PostgreSQL lock timeout for migrations (in milliseconds)
+DATABASE_LOCK_TIMEOUT = int(os.getenv("DATABASE_LOCK_TIMEOUT", "5000"))
 
 # Replication lag (seconds) above which /health/db/replication-lag returns 503.
 REPLICA_LAG_ALERT_SECONDS = int(os.getenv("REPLICA_LAG_ALERT_SECONDS", "30"))
@@ -586,6 +592,7 @@ CONTENT_SECURITY_POLICY = {
         "data:",
     ],
 }
+
 CELERY_BEAT_SCHEDULE = {
     "sync-oss-issues-hourly": {
         "task": "apps.recommendations.tasks.sync_oss_issues",
