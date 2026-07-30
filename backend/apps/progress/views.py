@@ -1374,24 +1374,26 @@ class HeatmapView(APIView):
                 )
             user = request.user
 
-        start_param = request.query_params.get("start_date")
-        end_param = request.query_params.get("end_date")
+        try:
+            today = user.user_profile.local_today
+        except Exception:
+            today = datetime.date.today()
 
         if start_param:
             try:
                 start_date = datetime.datetime.strptime(start_param, "%Y-%m-%d").date()
             except ValueError:
-                start_date = datetime.date.today() - datetime.timedelta(days=365)
+                start_date = today - datetime.timedelta(days=365)
         else:
-            start_date = datetime.date.today() - datetime.timedelta(days=365)
+            start_date = today - datetime.timedelta(days=365)
 
         if end_param:
             try:
                 end_date = datetime.datetime.strptime(end_param, "%Y-%m-%d").date()
             except ValueError:
-                end_date = datetime.date.today()
+                end_date = today
         else:
-            end_date = datetime.date.today()
+            end_date = today
 
         activity_type_filter = request.query_params.get("activity_type")
 
@@ -1544,21 +1546,26 @@ class HeatmapCSVExportView(APIView):
         end_param = request.query_params.get("end_date")
         activity_type_filter = request.query_params.get("activity_type")
 
+        try:
+            today = user.user_profile.local_today
+        except Exception:
+            today = datetime.date.today()
+
         if start_param:
             try:
                 start_date = datetime.datetime.strptime(start_param, "%Y-%m-%d").date()
             except ValueError:
-                start_date = datetime.date.today() - datetime.timedelta(days=365)
+                start_date = today - datetime.timedelta(days=365)
         else:
-            start_date = datetime.date.today() - datetime.timedelta(days=365)
+            start_date = today - datetime.timedelta(days=365)
 
         if end_param:
             try:
                 end_date = datetime.datetime.strptime(end_param, "%Y-%m-%d").date()
             except ValueError:
-                end_date = datetime.date.today()
+                end_date = today
         else:
-            end_date = datetime.date.today()
+            end_date = today
 
         activity_breakdown = defaultdict(
             lambda: {"reading": 0, "quizzes": 0, "code_submissions": 0}
