@@ -1,47 +1,35 @@
 /// <reference types="vite/client" />
 import { enqueueOfflineAction } from "./offlineQueue";
-import { clearAccessToken, getAccessToken } from "./authToken";
+import { clearAccessToken, getAccessToken, setAccessToken } from "./authToken";
 import { broadcastAuthEvent } from "./authSync";
 import toast from "react-hot-toast";
+
+let refreshPromise: Promise<string | null> | null = null;
 
 // 1. Defend the environment variable retrieval against server-side execution crashes
 const getSafeEnvVar = (key: string): string => {
   if (typeof process !== "undefined" && process.env && process.env[key]) {
     return process.env[key] as string;
   }
-<<<<<<< HEAD
   if (typeof import.meta !== "undefined" && import.meta.env && import.meta.env[key]) {
     return import.meta.env[key] as string;
-=======
-  // @ts-ignore - process might not be defined in Vite environments
-  if (typeof process !== "undefined" && process.env) {
-    // @ts-ignore
-    return process.env.NEXT_PUBLIC_API_URL || process.env.VITE_API_BASE_URL;
->>>>>>> 02ece0c8009596a33fbf5bc0bc7298ff74711560
   }
   return "";
 };
 
-<<<<<<< HEAD
 // 2. Safely resolve the base URL
-const API_BASE =
+export const API_BASE =
   getSafeEnvVar("VITE_API_BASE_URL").trim() ||
   (typeof window !== "undefined" ? `${window.location.origin}/api` : "http://127.0.0.1:8000/api");
-=======
-export const API_BASE =
-  getApiBaseUrl()?.trim() ||
-  (typeof window !== "undefined"
-    ? `${window.location.origin}/api`
-    : "http://127.0.0.1:8000/api");
->>>>>>> 02ece0c8009596a33fbf5bc0bc7298ff74711560
 
-  type RequestOptions = RequestInit & {
+type RequestOptions = RequestInit & {
   requireAuth?: boolean;
   suppressErrorToast?: boolean;
   /** Request timeout in milliseconds. Default: 15000 (15s) */
   timeoutMs?: number;
   /** Max retries on network/5xx errors. Default: 1 */
   maxRetries?: number;
+  _isRetry?: boolean;
 };
 
 /**
@@ -116,6 +104,44 @@ export async function fetchApi(endpoint: string, options: RequestOptions = {}) {
       }
 
       if (!response.ok) {
+        if (response.status === 401 && !options._isRetry) {
+          try {
+            const refreshToken = localStorage.getItem("refreshToken");
+            if (refreshToken) {
+              if (!refreshPromise) {
+                refreshPromise = fetch(`${API_BASE}/auth/refresh/`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ refresh: refreshToken }),
+                }).then(async (res) => {
+                  if (res.ok) {
+                    const data = await res.json();
+                    if (data.access) {
+                      setAccessToken(data.access);
+                      if (data.refresh) {
+                        localStorage.setItem("refreshToken", data.refresh);
+                      }
+                      return data.access;
+                    }
+                  }
+                  throw new Error("Refresh failed");
+                }).finally(() => {
+                  refreshPromise = null;
+                });
+              }
+              const newAccessToken = await refreshPromise;
+              if (newAccessToken) {
+                return await fetchApi(endpoint, {
+                  ...options,
+                  _isRetry: true,
+                });
+              }
+            }
+          } catch (e) {
+            console.error("[fetchApi] Token refresh failed", e);
+          }
+        }
+
         const errorBody = await response.json().catch(() => ({}));
         let errorMessage =
           errorBody.error ||
