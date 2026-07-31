@@ -51,16 +51,16 @@ class LeaderboardView(ListAPIView):
     pagination_class = LeaderboardPagination
 
     def list(self, request, *args, **kwargs):
+        from apps.core.cache.stampede import stampede_protected_get_or_set
+
         page = request.query_params.get("page", "1")
         cache_key = f"leaderboard_page_{page}"
 
-        cached_data = cache.get(cache_key)
-        if cached_data is not None:
-            return Response(cached_data)
+        def generate():
+            return super(LeaderboardView, self).list(request, *args, **kwargs).data
 
-        response = super().list(request, *args, **kwargs)
-        cache.set(cache_key, response.data, 300)
-        return response
+        data = stampede_protected_get_or_set(cache_key, generate, timeout=300)
+        return Response(data)
 
     def get_queryset(self):
         timeframe = self.request.query_params.get("timeframe", "all")

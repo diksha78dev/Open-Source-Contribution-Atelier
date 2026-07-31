@@ -40,13 +40,14 @@ from .serializers import (
 
 # --- Helper Functions ---
 def get_active_lessons():
-    lessons = cache.get("active_lessons_list")
-    if lessons is None:
-        lessons = list(
+    from apps.core.cache.stampede import stampede_protected_get_or_set
+    
+    def generate():
+        return list(
             Lesson.objects.prefetch_related("exercises", "prerequisites").all()
         )
-        cache.set("active_lessons_list", lessons, 60 * 60 * 24)
-    return lessons
+        
+    return stampede_protected_get_or_set("curriculum:full", generate, timeout=60 * 60 * 24)
 
 
 # --- Existing Views ---
