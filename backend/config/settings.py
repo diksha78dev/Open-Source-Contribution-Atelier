@@ -204,7 +204,6 @@ INSTALLED_APPS = [
     "apps.events",
     "apps.portfolio",
     "apps.feature_flags",
-    "apps.issues",
     "apps.gamification",
     "apps.ai_tutor",
     "apps.project_health",
@@ -442,7 +441,9 @@ GITHUB_CLIENT_SECRET = os.getenv("GITHUB_CLIENT_SECRET")
 # deployments/.env files still using the old *_OAUTH_* naming. Remove
 # once confirmed no active deployment relies on these.
 GITHUB_OAUTH_CLIENT_ID = os.getenv("GITHUB_OAUTH_CLIENT_ID") or GITHUB_CLIENT_ID
-GITHUB_OAUTH_CLIENT_SECRET = os.getenv("GITHUB_OAUTH_CLIENT_SECRET") or GITHUB_CLIENT_SECRET
+GITHUB_OAUTH_CLIENT_SECRET = (
+    os.getenv("GITHUB_OAUTH_CLIENT_SECRET") or GITHUB_CLIENT_SECRET
+)
 
 # ── AI Tutor ────────────────────────────────────────────────────────────────────
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
