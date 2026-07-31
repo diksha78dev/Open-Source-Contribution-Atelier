@@ -576,38 +576,44 @@ class CommunityStatsView(APIView):
             else None
         )
 
-        user_count = User.objects.count()
+        def compute_stats():
+            user_count = User.objects.count()
 
-        if org:
-            completed_lessons = LessonProgress.objects.filter(
-                organization=org,
-                completed=True,
-            ).count()
+            if org:
+                completed_lessons = LessonProgress.objects.filter(
+                    organization=org,
+                    completed=True,
+                ).count()
 
-            open_help_requests = HelpRequest.objects.filter(
-                organization=org,
-                status=HelpRequest.Status.OPEN,
-            ).count()
-        else:
-            completed_lessons = LessonProgress.objects.filter(
-                completed=True,
-            ).count()
+                open_help_requests = HelpRequest.objects.filter(
+                    organization=org,
+                    status=HelpRequest.Status.OPEN,
+                ).count()
+            else:
+                completed_lessons = LessonProgress.objects.filter(
+                    completed=True,
+                ).count()
 
-            open_help_requests = HelpRequest.objects.filter(
-                status=HelpRequest.Status.OPEN,
-            ).count()
+                open_help_requests = HelpRequest.objects.filter(
+                    status=HelpRequest.Status.OPEN,
+                ).count()
 
-        active_contributors = 100 + user_count
-        merged_prs = 300 + completed_lessons
-
-        return Response(
-            {
+            active_contributors = 100 + user_count
+            merged_prs = 300 + completed_lessons
+            return {
                 "active_contributors": active_contributors,
                 "merged_prs": merged_prs,
                 "response_sla": "3.5h",
                 "open_requests": open_help_requests,
             }
-        )
+
+        from apps.core.cache.coalescing import CoalescingCache
+
+        org_id = org.id if org else "none"
+        cache_key = f"community_stats_org_{org_id}"
+        stats = CoalescingCache().get_or_set_coalesced(cache_key, 300, compute_stats)
+
+        return Response(stats)
 
 
 class UserAchievementsView(APIView):
@@ -1253,11 +1259,13 @@ class LeaderboardView(APIView):
                 if search_username:
                     query = query.filter(user__username__icontains=search_username)
 
-                total_users = query.count()
-                if total_users > 0:
+                def compute_leaderboard():
+                    total_users_count = query.count()
+                    if total_users_count == 0:
+                        return 0, []
                     offset = (page - 1) * limit
                     ranks = query[offset : offset + limit]
-                    leaderboard = [
+                    leaderboard_data = [
                         {
                             "user_id": r.user_id,
                             "username": r.user.username,
@@ -1266,7 +1274,16 @@ class LeaderboardView(APIView):
                         }
                         for r in ranks
                     ]
+                    return total_users_count, leaderboard_data
 
+                from apps.core.cache.coalescing import CoalescingCache
+
+                cache_key = f"leaderboard_all_time_p{page}_l{limit}_u{search_username or 'none'}"
+                total_users, leaderboard = CoalescingCache().get_or_set_coalesced(
+                    cache_key, 300, compute_leaderboard
+                )
+
+                if total_users > 0:
                     personal_rank = None
                     if request.user.is_authenticated and not search_username:
                         try:

@@ -461,13 +461,10 @@ class ContributorDashboardView(APIView):
             }
 
     def get(self, request):
-         users = User.objects.filter(
-            is_active=True
-        ).annotate(
-            total_xp=F('progress__xp')
-        ).order_by(
-            '-total_xp',  
-            'username'   
+        users = (
+            User.objects.filter(is_active=True)
+            .annotate(total_xp=F("progress__xp"))
+            .order_by("-total_xp", "username")
         )
         user = request.user
         fields_param = request.query_params.get("fields")
@@ -483,6 +480,8 @@ class ContributorDashboardView(APIView):
             ]
 
         data = {}
+        from apps.core.cache.coalescing import CoalescingCache
+
         for field in requested_fields:
             if field not in [
                 "personal_stats",
@@ -494,10 +493,13 @@ class ContributorDashboardView(APIView):
                 continue
 
             cache_key = f"dashboard_contributor_{field}_{user.id}"
-            field_data = cache.get(cache_key)
-            if field_data is None:
-                field_data = self._calculate_field(user, field)
-                cache.set(cache_key, field_data, 300)
+
+            def compute_field_data(u=user, f=field):
+                return self._calculate_field(u, f)
+
+            field_data = CoalescingCache().get_or_set_coalesced(
+                cache_key, 300, compute_field_data
+            )
             data[field] = field_data
 
         return Response(data)
