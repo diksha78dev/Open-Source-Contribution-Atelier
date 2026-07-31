@@ -6,21 +6,25 @@ import toast from "react-hot-toast";
 
 let refreshPromise: Promise<string | null> | null = null;
 
-// 1. Defend the environment variable retrieval against server-side execution crashes
 const getSafeEnvVar = (key: string): string => {
   if (typeof process !== "undefined" && process.env && process.env[key]) {
     return process.env[key] as string;
   }
-  if (typeof import.meta !== "undefined" && import.meta.env && import.meta.env[key]) {
+  if (
+    typeof import.meta !== "undefined" &&
+    import.meta.env &&
+    import.meta.env[key]
+  ) {
     return import.meta.env[key] as string;
   }
   return "";
 };
 
-// 2. Safely resolve the base URL
 export const API_BASE =
   getSafeEnvVar("VITE_API_BASE_URL").trim() ||
-  (typeof window !== "undefined" ? `${window.location.origin}/api` : "http://127.0.0.1:8000/api");
+  (typeof window !== "undefined"
+    ? `${window.location.origin}/api`
+    : "http://127.0.0.1:8000/api");
 
 type RequestOptions = RequestInit & {
   requireAuth?: boolean;
@@ -148,7 +152,11 @@ export async function fetchApi(endpoint: string, options: RequestOptions = {}) {
           errorBody.message ||
           errorBody.non_field_errors?.[0];
 
-        if (!errorMessage && typeof errorBody === "object" && errorBody !== null) {
+        if (
+          !errorMessage &&
+          typeof errorBody === "object" &&
+          errorBody !== null
+        ) {
           const fieldErrors = Object.values(errorBody)
             .map((msgs) => {
               if (Array.isArray(msgs)) return msgs[0];
@@ -162,7 +170,9 @@ export async function fetchApi(endpoint: string, options: RequestOptions = {}) {
           }
         }
 
-        errorMessage = errorMessage || `HTTP error ${response.status} (Req ID: ${requestId})`;
+        errorMessage =
+          errorMessage ||
+          `HTTP error ${response.status} (Req ID: ${requestId})`;
 
         console.error(`[API Error] ReqID=${requestId}`, errorBody);
 
